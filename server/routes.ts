@@ -1,93 +1,46 @@
-import type { Express } from "express";
-import { createServer, type Server } from "http";
-import { storage } from "./storage";
-import { spawn } from "child_process";
-import path from "path";
+import express, { Request, Response } from 'express';
+import { runSlotEngine } from '../math_engine/slot_engine';
 
-export async function registerRoutes(app: Express): Promise<Server> {
-  // Stake Engine API endpoints
-  app.post("/api/stake/play", async (req, res) => {
-    try {
-      const { bet = 1 } = req.body;
-      
-      // Call Python math engine
-      const pythonScript = path.join(process.cwd(), "math_engine", "slot_engine.py");
-      const python = spawn("python3", [pythonScript, "play", bet.toString()]);
-      
-      let result = "";
-      let error = "";
-      
-      python.stdout.on("data", (data) => {
-        result += data.toString();
-      });
-      
-      python.stderr.on("data", (data) => {
-        error += data.toString();
-      });
-      
-      python.on("close", (code) => {
-        if (code === 0) {
-          try {
-            const gameResult = JSON.parse(result);
-            res.json(gameResult);
-          } catch (parseError) {
-            console.error("Failed to parse Python output:", parseError);
-            res.status(500).json({ error: "Failed to parse game result" });
-          }
-        } else {
-          console.error("Python script error:", error);
-          res.status(500).json({ error: "Game engine error" });
-        }
-      });
-    } catch (error) {
-      console.error("Stake play error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
-  
-  app.get("/api/stake/balance", async (req, res) => {
-    try {
-      // Mock balance for development
-      res.json({ balance: 1000 });
-    } catch (error) {
-      console.error("Balance error:", error);
-      res.status(500).json({ error: "Failed to get balance" });
-    }
-  });
-  
-  app.post("/api/stake/generate-outcomes", async (req, res) => {
-    try {
-      const { simulations = 1000 } = req.body;
-      
-      // Call Python outcome generator
-      const pythonScript = path.join(process.cwd(), "math_engine", "outcome_generator.py");
-      const python = spawn("python3", [pythonScript, simulations.toString()]);
-      
-      let result = "";
-      let error = "";
-      
-      python.stdout.on("data", (data) => {
-        result += data.toString();
-      });
-      
-      python.stderr.on("data", (data) => {
-        error += data.toString();
-      });
-      
-      python.on("close", (code) => {
-        if (code === 0) {
-          res.json({ message: "Outcomes generated successfully", simulations });
-        } else {
-          console.error("Python script error:", error);
-          res.status(500).json({ error: "Failed to generate outcomes" });
-        }
-      });
-    } catch (error) {
-      console.error("Generate outcomes error:", error);
-      res.status(500).json({ error: "Internal server error" });
-    }
-  });
+const router = express.Router();
 
-  const httpServer = createServer(app);
-  return httpServer;
-}
+// Simple in-memory balance store
+let balance = 1000;
+
+// --- Get Balance ---
+router.get('/api/stake/balance', (req: Request, res: Response) => {
+  res.json({ balance });
+});
+
+// --- Play Route ---
+router.post('/api/stake/play', async (req: Request, res: Response) => {
+  try {
+    const { bet } = req.body;
+
+    if (typeof bet !== 'number' || bet <= 0) {
+      return res.status(400).json({ error: 'Invalid bet amount' });
+    }
+
+    if (bet > balance) {
+      return res.status(400).json({ error: 'Insufficient balance' });
+    }
+
+    // Deduct bet
+    balance -= bet;
+
+    // Run slot engine
+    const result = await runSlotEngine(bet);
+
+    // Add winnings
+    balance += result.totalWin;
+
+    res.json({
+      ...result,
+      balance,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
+export default router;

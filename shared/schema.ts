@@ -15,3 +15,16 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+export interface Win {
+  line: number;
+  symbol: string;
+  payout: number;
+}
+
+export interface SpinResult {
+  board: string[][];
+  totalWin: number;
+  wins: Win[];
+  events?: any[];
+  balance?: number;
+}
