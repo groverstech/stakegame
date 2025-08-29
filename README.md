@@ -91,3 +91,18 @@ Preferred communication style: Simple, everyday language.
 - **Stake Engine API**: Gaming platform integration
 - **Child process spawning**: Python integration from Node.js
 - **Session management**: User authentication and game state persistence
+
+## Runtime modes
+
+Set `VITE_RUNTIME_MODE` to control how the game talks to the engine:
+
+- `engine`: Use the host-provided Stake Engine SDK (for platform deployment).
+- `server`: Call local Express API (`/api/stake/play`) which runs the Python math engine.
+- `mock`:   Use built-in randomizer for quick UI work.
+
+Create a `.env` file at repo root:
+
+```env
+VITE_RUNTIME_MODE=server
+```
+

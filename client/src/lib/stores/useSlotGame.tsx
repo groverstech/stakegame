@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { SLOT_CONFIG } from '../slotConfig';
-import { stakeApiPlay } from '../stakeApi';
+import { playSpin } from '../engineAdapter';
 
 interface SpinResult {
   board: string[];
@@ -117,7 +117,7 @@ export const useSlotGame = create<SlotGameState>()(
     spin: async (): Promise<SpinResult | null> => {
       try {
         // Call Stake Engine API (or mock for development)
-        const result = await stakeApiPlay();
+        const result = await playSpin();
         
         if (result) {
           const wins = checkWinningLines(result.board);
